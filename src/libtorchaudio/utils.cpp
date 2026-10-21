@@ -1,6 +1,6 @@
 #include <libtorchaudio/utils.h>
 
-#ifdef USE_CUDA
+#if defined(USE_CUDA) && !defined(USE_ROCM)
 #include <cuda.h>
 #endif
 
@@ -15,7 +15,7 @@ bool is_align_available() {
 }
 
 std::optional<int64_t> cuda_version() {
-#ifdef USE_CUDA
+#if defined(USE_CUDA) && !defined(USE_ROCM)
   return CUDA_VERSION;
 #else
   return {};

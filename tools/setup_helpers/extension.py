@@ -67,10 +67,13 @@ def get_ext_modules():
 
     extension = CppExtension
 
-    if _USE_CUDA:
+    if _USE_CUDA or _USE_ROCM:
         extension = CUDAExtension
         extra_compile_args["cxx"].append("-DUSE_CUDA")
         extra_compile_args["nvcc"] = ["-O2", "-DUSE_CUDA"]
+        if _USE_ROCM:
+            extra_compile_args["cxx"].append("-DUSE_ROCM")
+            extra_compile_args["nvcc"].append("-DUSE_ROCM")
 
     sources = [
         "utils.cpp",
@@ -78,7 +81,7 @@ def get_ext_modules():
         "overdrive.cpp",
     ]
 
-    if _USE_CUDA:
+    if _USE_CUDA or _USE_ROCM:
         sources.append("iir_cuda.cu")
 
     if _BUILD_RNNT:
@@ -88,7 +91,7 @@ def get_ext_modules():
                 "rnnt/compute.cpp",
             ]
         )
-        if _USE_CUDA:
+        if _USE_CUDA or _USE_ROCM:
             sources.append("rnnt/gpu/compute.cu")
 
     if _BUILD_ALIGN:
@@ -99,7 +102,7 @@ def get_ext_modules():
                 "forced_align/compute.cpp",
             ]
         )
-        if _USE_CUDA:
+        if _USE_CUDA or _USE_ROCM:
             sources.append("forced_align/gpu/compute.cu")
 
     modules = [
