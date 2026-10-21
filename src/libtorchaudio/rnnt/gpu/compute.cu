@@ -2,6 +2,7 @@
 #include <libtorchaudio/cuda_utils.h>
 #include <libtorchaudio/utils.h>
 
+#include <torch/csrc/stable/accelerator.h>
 #include <torch/csrc/stable/library.h>
 #include <torch/csrc/stable/ops.h>
 #include <torch/headeronly/core/Dispatch_v2.h>
@@ -94,7 +95,8 @@ std::tuple<Tensor, Tensor> compute(
   options.clamp_ = clamp;
   options.fusedLogSmax_ = fused_log_softmax;
   options.stream_ = libtorchaudio::cuda::getCurrentCUDAStream(logits.get_device_index());
-  cudaSetDevice(logits.get_device());
+  const torch::stable::accelerator::DeviceGuard device_guard(
+      logits.get_device_index());
   options.device_ = GPU;
 
   Tensor costs = torch::stable::new_empty(logits, {options.batchSize_ * options.nHypos_});

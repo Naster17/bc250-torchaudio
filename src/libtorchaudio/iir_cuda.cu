@@ -1,3 +1,4 @@
+#include <libtorchaudio/cuda_utils.h>
 #include <libtorchaudio/utils.h>
 #include <torch/csrc/stable/accelerator.h>
 #include <torch/csrc/stable/macros.h>
@@ -70,10 +71,12 @@ Tensor cuda_lfilter_core_loop(
 
   THO_DISPATCH_V2(
       in.scalar_type(), "iir_cu_loop", AT_WRAP([&] {
-        (iir_cu_kernel<scalar_t><<<blocks, threads>>>(
+        iir_cu_kernel<scalar_t><<<
+            blocks, threads, 0,
+            libtorchaudio::cuda::getCurrentCUDAStream(in.get_device_index())>>>(
             torchaudio::packed_accessor_size_t<scalar_t, 3>(in),
             torchaudio::packed_accessor_size_t<scalar_t, 2>(a_flipped),
-            torchaudio::packed_accessor_size_t<scalar_t, 3>(padded_out)));
+            torchaudio::packed_accessor_size_t<scalar_t, 3>(padded_out));
         STD_CUDA_KERNEL_LAUNCH_CHECK();
         }), AT_FLOATING_TYPES);
   return padded_out;
