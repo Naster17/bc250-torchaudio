@@ -35,6 +35,21 @@ __global__ void iir_cu_kernel(
   }
 }
 
+// Keep the launch outside dispatch macros: hipify must parse its commas before
+// the C++ preprocessor expands THO_DISPATCH_V2 / AT_WRAP.
+template <typename scalar_t>
+void launch_iir(
+    Tensor in, Tensor a_flipped, Tensor padded_out,
+    dim3 blocks, dim3 threads) {
+  iir_cu_kernel<scalar_t><<<
+      blocks, threads, 0,
+      libtorchaudio::cuda::getCurrentCUDAStream(in.get_device_index())>>>(
+      torchaudio::packed_accessor_size_t<scalar_t, 3>(in),
+      torchaudio::packed_accessor_size_t<scalar_t, 2>(a_flipped),
+      torchaudio::packed_accessor_size_t<scalar_t, 3>(padded_out));
+  STD_CUDA_KERNEL_LAUNCH_CHECK();
+}
+
 Tensor cuda_lfilter_core_loop(
     Tensor in,
     Tensor a_flipped,
@@ -71,13 +86,7 @@ Tensor cuda_lfilter_core_loop(
 
   THO_DISPATCH_V2(
       in.scalar_type(), "iir_cu_loop", AT_WRAP([&] {
-        iir_cu_kernel<scalar_t><<<
-            blocks, threads, 0,
-            libtorchaudio::cuda::getCurrentCUDAStream(in.get_device_index())>>>(
-            torchaudio::packed_accessor_size_t<scalar_t, 3>(in),
-            torchaudio::packed_accessor_size_t<scalar_t, 2>(a_flipped),
-            torchaudio::packed_accessor_size_t<scalar_t, 3>(padded_out));
-        STD_CUDA_KERNEL_LAUNCH_CHECK();
+        launch_iir<scalar_t>(in, a_flipped, padded_out, blocks, threads);
         }), AT_FLOATING_TYPES);
   return padded_out;
 }
