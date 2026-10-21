@@ -5,6 +5,7 @@
 
 #include <libtorchaudio/rnnt/options.h>
 #include <torch/headeronly/util/Exception.h>
+#include <torch/csrc/stable/macros.h>
 
 namespace torchaudio {
 namespace rnnt {
@@ -122,14 +123,18 @@ class IntWorkspace {
   inline void ResetAlphaBetaCounters() {
 #ifdef USE_CUDA
     if (data_ != nullptr && options_.device_ == GPU) {
-      cudaMemset(
+      // Counters are consumed on options_.stream_. Initializing them on the
+      // default stream does not order a non-blocking PyTorch consumer stream.
+      STD_CUDA_CHECK(cudaMemsetAsync(
           GetPointerToAlphaCounters(),
           0,
-          ComputeSizeForAlphaCounters(options_) * sizeof(int));
-      cudaMemset(
+          ComputeSizeForAlphaCounters(options_) * sizeof(int),
+          options_.stream_));
+      STD_CUDA_CHECK(cudaMemsetAsync(
           GetPointerToBetaCounters(),
           0,
-          ComputeSizeForBetaCounters(options_) * sizeof(int));
+          ComputeSizeForBetaCounters(options_) * sizeof(int),
+          options_.stream_));
     }
 #endif // USE_CUDA
   }
